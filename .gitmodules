@@ -1,0 +1,3 @@
+[submodule "lib/cpp-socket"]
+	path = lib/cpp-socket
+	url = https://github.com/RNatvik/cpp-socket.git
