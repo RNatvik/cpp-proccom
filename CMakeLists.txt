@@ -6,17 +6,7 @@ project(socket-service VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#----------------------------------
-# External Libs
-#----------------------------------
-set(ExternalLib1_path F:/CLibs/asio-1.18.1)
-add_library(asio 
-    ${ExternalLib1_path}/include/asio.hpp
-)
-target_include_directories(asio PUBLIC ${ExternalLib1_path}/include)
-set_target_properties(asio PROPERTIES LINKER_LANGUAGE CXX)
-
-#target_compile_options(asio PRIVATE -D_WIN32_WINNT=0x0601)
+add_subdirectory(lib/cpp-socket)
 
 #----------------------------------
 # INSTALL PATHS
@@ -42,11 +32,11 @@ set(LibName1_files
 )
 
 set(ExeName1 main)
-set(ExeName1_libs pthread asio ${LibName1} ws2_32)
+set(ExeName1_libs ${LibName1} Socket)
 set(ExeName1_files src/main.cpp)
 
 set(ExeName2 test)
-set(ExeName2_libs pthread asio ${LibName1} ws2_32)
+set(ExeName2_libs ${LibName1} Socket)
 set(ExeName2_files src/test.cpp)
 
 #----------------------------------
@@ -75,6 +65,7 @@ target_include_directories(
 #----------------------------------
 add_executable(${ExeName1} ${ExeName1_files})
 target_link_libraries(${ExeName1} ${ExeName1_libs})
+
 #target_compile_options(${ExeName1} PRIVATE -Werror -Wextra -Os)
 
 add_executable(${ExeName2} ${ExeName2_files})
