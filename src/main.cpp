@@ -5,7 +5,7 @@
 #include <prc-common.hpp>
 #include <prc-message.hpp>
 #include <prc-payload.hpp>
-
+#include <prc-publisher.hpp>
 
 class EchoClient {
 private:

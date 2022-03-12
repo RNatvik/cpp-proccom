@@ -29,6 +29,7 @@ set(LibName1_files
     include/prc-payload.hpp
     include/prc-node.hpp
     include/prc-broker.hpp
+    include/prc-publisher.hpp
 )
 
 set(ExeName1 main)
