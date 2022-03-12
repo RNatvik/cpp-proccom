@@ -2,36 +2,21 @@
 #define PROCCOM_PUBLISHER_HPP
 
 #include <prc-common.hpp>
+#include <prc-node.hpp>
 
 namespace prc {
-    class Publisher {
+    class Publisher : Node {
     private:
-        NodeType type;
-        std::string id;
-        uint64_t heartbeatTimeout;
         std::vector<std::string> topics;
 
-        NodeLookup nodes;
-
-        bool running;
-        soc::UdpSocket socket;
-        soc::TSQueue<std::vector<uint8_t>> rxQueue;
-        Event newMessage;
-        std::thread runThread;
-        std::thread admThread;
 
     public:
-        Publisher(std::string id, std::string ip, int port, uint64_t heartbeatTimeout = 20000) :
-            socket(
-                [this](std::vector<uint8_t>& bytes, size_t length, std::string ip, int port) {this->inboundHandler(bytes, length, ip, port);},
-                ip,
-                port
+        Publisher(std::string id, std::string ip, uint32_t port, uint64_t heartbeatTimeout = 20000) :
+            Node(
+                NodeType::PUBLISHER,
+                id, ip, port, heartbeatTimeout
             )
         {
-            this->type = NodeType::PUBLISHER;
-            this->id = id;
-            this->running = false;
-            this->heartbeatTimeout = heartbeatTimeout;
         }
 
         bool addTopic(std::string topic) {
@@ -53,105 +38,55 @@ namespace prc {
 
         }
 
-        bool isRunning() { return this->running; }
-
-        void start(std::string brokerIp, uint32_t brokerPort) {
-            if (!this->running) {
-                this->running = true;
-                this->socket.start();
-                this->admThread = std::thread([this]() {this->admTask();});
-                this->runThread = std::thread([this]() {this->runTask();});
-
-                RegisterMessage msg;
-                msg.nodeType = NodeType::PUBLISHER;
-                msg.id = this->id;
-                msg.ip = this->socket.getIP();
-                msg.port = this->socket.getPort();
-                msg.topics = this->topics;
-                msg.timestamp = timestamp();
-                this->socket.send(brokerIp, brokerPort, msg.toBytes());
-            }
-        }
-
-        void stop() {
-            if (this->running) {
-                socket.stop();
-                this->running = false;
-                if (this->admThread.joinable()) this->admThread.join();
-                if (this->runThread.joinable()) this->runThread.join();
-            }
-        }
-
     private:
-        void inboundHandler(std::vector<uint8_t>& bytes, size_t length, std::string ip, int port) {
-            this->rxQueue.push_back(std::vector<uint8_t>(bytes.begin(), bytes.begin() + length));
-            this->newMessage.set();
+        void impl_start(std::string brokerIp, uint32_t brokerPort) {
+            RegisterMessage msg;
+            msg.nodeType = NodeType::PUBLISHER;
+            msg.id = this->id;
+            msg.ip = this->socket.getIP();
+            msg.port = this->socket.getPort();
+            msg.topics = this->topics;
+            msg.timestamp = timestamp();
+            this->socket.send(brokerIp, brokerPort, msg.toBytes());
         }
 
-        void admTask() {
-            while (this->running) {
-                // do something
-                using namespace std::chrono_literals;
-                std::this_thread::sleep_for(5000ms);
-                
-                auto currentTimestamp = timestamp();
-                NodeInfo* brokerInfo;
-                bool brokerRegistered = this->nodes.getBroker(brokerInfo);
-                bool brokerDisconnected = false;
-                if (brokerRegistered) brokerDisconnected = currentTimestamp > (brokerInfo->heartbeat + this->heartbeatTimeout);
-                if (brokerRegistered && !brokerDisconnected) {
-                    HeartbeatMessage msg;
-                    msg.id = this->id;
-                    msg.timestamp = currentTimestamp;
-                    this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
-                } else {
-                    //What now?
-                }
+        void impl_stop() {
+            UnregisterMessage msg;
+            msg.id = this->id;
+            msg.timestamp = timestamp();
+            NodeInfo* brokerInfo;
+            bool brokerExists = this->nodes.getBroker(brokerInfo);
+            if (brokerExists) this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
+        }
+
+        void impl_admTask() {
+            auto currentTimestamp = timestamp();
+            NodeInfo* brokerInfo;
+            bool brokerRegistered = this->nodes.getBroker(brokerInfo);
+            bool brokerDisconnected = false;
+            if (brokerRegistered) brokerDisconnected = currentTimestamp > (brokerInfo->heartbeat + this->heartbeatTimeout);
+            if (brokerRegistered && !brokerDisconnected) {
+                HeartbeatMessage msg;
+                msg.id = this->id;
+                msg.timestamp = currentTimestamp;
+                this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
+            }
+            else {
+                //What now?
             }
         }
 
-        void runTask() {
-            while (this->running) {
-                if (this->rxQueue.empty()) this->newMessage.wait();
-                this->newMessage.clear();
-                std::vector<uint8_t> bytes = this->rxQueue.pop_front();
-                Message msg(bytes);
+        void impl_runTask() {}
 
-                switch (msg.msgType) {
-                case MessageType::HEARTBEAT:
-                    this->handleHeartbeat(bytes);
-                    break;
-                case MessageType::REGISTER:
-                    this->handleRegister(bytes);
-                    break;
-                default:
-                    break;
-                }
-            }
+        void impl_handleRegister(RegisterMessage& msg) {}
+
+        void impl_handleUnregister(UnregisterMessage& msg) {
+            this->nodes.removeNode(msg.id);
         }
 
-        void handleRegister(std::vector<uint8_t>& bytes) {
-            RegisterMessage msg(bytes);
-            NodeInfo info;
-            info.type = msg.nodeType;
-            info.id = msg.id,
-            info.ip = msg.ip;
-            info.port = msg.port;
-            info.heartbeat = msg.timestamp;
-            info.topics = msg.topics;
-            this->nodes.addNode(info);
-        }
+        void impl_handleHeartbeat(HeartbeatMessage& msg) {}
 
-        void handleHeartbeat(std::vector<uint8_t>& bytes) {
-            HeartbeatMessage msg(bytes);
-            NodeInfo* ptr;
-            bool success = this->nodes.getNodeByID(msg.id, ptr);
-            if (success) {
-                ptr->heartbeat = msg.timestamp;
-            }
-        }
-
-
+        void impl_handlePublish(PublishMessage& msg) {}
 
     };
 }

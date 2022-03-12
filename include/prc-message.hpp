@@ -8,10 +8,9 @@ namespace prc {
 
     enum class MessageType : uint8_t {
         REGISTER = 1,
-        LINK = 2,
+        UNREGISTER = 2,
         HEARTBEAT = 3,
-        PUBLISH = 4,
-        UNREGISTER = 5
+        PUBLISH = 4
     };
 
     struct Message {
@@ -129,31 +128,6 @@ namespace prc {
         }
     };
 
-    struct LinkMessage : public Message {
-        std::string ip;
-        uint32_t port;
-        std::string topic;
-
-        LinkMessage() : Message(MessageType::LINK) {}
-
-        LinkMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
-        ~LinkMessage() {}
-
-    protected:
-        void _toBytes(std::vector<uint8_t>& bytes) {
-            _stringToBytes(ip, bytes);
-            _varToBytes(port, bytes);
-            _stringToBytes(topic, bytes);
-        }
-
-        bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) {
-            ip = _stringFromBytes(bytes, offset);
-            _varFromBytes(port, bytes, offset);
-            topic = _stringFromBytes(bytes, offset);
-            return true;
-        }
-    };
-
     struct PublishMessage : public Message {
     public:
         std::string topic;
@@ -194,6 +168,12 @@ namespace prc {
         HeartbeatMessage() : Message(MessageType::HEARTBEAT) {}
         HeartbeatMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
         ~HeartbeatMessage() {}
+    };
+
+    struct UnregisterMessage : public Message {
+        UnregisterMessage() : Message(MessageType::HEARTBEAT) {}
+        UnregisterMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+        ~UnregisterMessage() {}
     };
 
 }  // namespace prc

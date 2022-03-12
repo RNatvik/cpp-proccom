@@ -8,115 +8,145 @@
 
 namespace prc {
 
-    
+
 
     /*------------------------------------------------------------------------------
     Node
     ------------------------------------------------------------------------------*/
     class Node {
     protected:
-        bool shutdown;
-        bool newMessage;
-        uint64_t heartbeatTimeout;
+        NodeType type;
         std::string id;
+        uint64_t heartbeatTimeout;
+
+        NodeLookup nodes;
+
+        bool running;
         soc::UdpSocket socket;
         soc::TSQueue<std::vector<uint8_t>> rxQueue;
+        Event newMessage;
         std::thread runThread;
         std::thread admThread;
 
-
-
-        void inboundHandler(std::vector<uint8_t>& buffer, std::size_t length, std::string ip, int port) {
-            rxQueue.push_back(std::vector<uint8_t>(buffer.begin(), buffer.begin() + length));
-            newMessage = true;
-        }
-
-        void checkHeartbeats() {
-            auto currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); // chronos voodoo
-
-        }
-
-        void sendHeartbeats() {
-            auto currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); // chronos voodoo
-        }
-
-        void handleMessage() {
-            std::vector<uint8_t> bytes = rxQueue.pop_front();
-            Message message(bytes);
-            switch (message.msgType) {
-            case MessageType::REGISTER:
-                this->handleRegister(bytes);
-                break;
-            case MessageType::LINK:
-                //                this->handleLink(om);
-                break;
-            case MessageType::HEARTBEAT:
-                this->handleHeartbeat(bytes);
-                break;
-            case MessageType::PUBLISH:
-                this->handlePublish(bytes);
-                break;
-            default:
-                break;
-            }
-        }
-
-        void handleHeartbeat(std::vector<uint8_t>& bytes) {}
-
-        virtual void handleRegister(std::vector<uint8_t>& bytes) {} // broker and publisher
-//        virtual void handleLink(OwnedMessage& om) {} // publisher specific
-        virtual void handlePublish(std::vector<uint8_t>& bytes) {} // subscriber specific
-        virtual void optionalPappirmoelle() {}
-        virtual void doRun() = 0;
-
-        void run() {
-            while (!this->shutdown) {
-                if (newMessage) {
-                    newMessage = false;
-                    doRun();
-                }
-            }
-        }
-
-        void pappirmoelle() {
-            using namespace std::chrono_literals;
-            while (!this->shutdown) {
-                std::this_thread::sleep_for(5000ms);
-                this->checkHeartbeats();
-                this->sendHeartbeats();
-
-                optionalPappirmoelle();
-            }
-
-        }
-
     public:
-        Node(NodeType type, std::string ip, uint32_t port) :
+        Node(NodeType type, std::string id, std::string ip, int port, uint64_t heartbeatTimeout = 20000) :
             socket(
-                [this](std::vector<uint8_t>& buffer, std::size_t length, std::string ip, int port) {this->inboundHandler(buffer, length, ip, port);},
+                [this](std::vector<uint8_t>& bytes, size_t length, std::string ip, int port) { this->inboundHandler(bytes, length, ip, port); },
                 ip,
                 port
-            )
-        {
-            newMessage = false;
-            shutdown = false;
-            heartbeatTimeout = 30000;
+            ) {
+            this->type = type;
+            this->id = id;
+            this->heartbeatTimeout = heartbeatTimeout;
+            this->running = false;
         }
-        ~Node() { this->stop(); }
+        ~Node() {}
 
-        void start() {
-            this->shutdown = false;
-            this->socket.start();
-            this->runThread = std::thread([this]() {this->run();});
-            this->admThread = std::thread([this]() {this->pappirmoelle();});
+        bool isRunning() { return this->running; }
+
+        void start(std::string brokerIp="", uint32_t brokerPort=-1) {
+            if (!this->running) {
+                this->running = true;
+                this->socket.start();
+                this->admThread = std::thread([this]() {this->admTask();});
+                this->runThread = std::thread([this]() {this->runTask();});
+                this->impl_start(brokerIp, brokerPort);
+            }
         }
 
         void stop() {
-            this->shutdown = true;
-            if (this->runThread.joinable()) this->runThread.join();
-            if (this->admThread.joinable()) this->admThread.join();
-            this->socket.stop();
+            if (this->running) {
+                this->impl_stop();
+                socket.stop();
+                this->running = false;
+                if (this->admThread.joinable()) this->admThread.join();
+                if (this->runThread.joinable()) this->runThread.join();
+            }
         }
+
+    protected:
+        void inboundHandler(std::vector<uint8_t>& bytes, size_t length, std::string ip, int port) {
+            this->rxQueue.push_back(std::vector<uint8_t>(bytes.begin(), bytes.begin() + length));
+            this->newMessage.set();
+        }
+        void admTask() {
+            while (this->running) {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(5000ms);
+                this->impl_admTask();
+            }
+        }
+        void runTask() {
+            while (this->running) {
+                if (this->rxQueue.empty()) this->newMessage.wait();
+                this->newMessage.clear();
+
+                std::vector<uint8_t> bytes = this->rxQueue.pop_front();
+                Message msg(bytes);
+                switch (msg.msgType) {
+
+                case MessageType::REGISTER:
+                    this->handleRegister(bytes);
+                    break;
+                case MessageType::UNREGISTER:
+                    this->handleUnregister(bytes);
+                    break;
+                case MessageType::HEARTBEAT:
+                    this->handleHeartbeat(bytes);
+                    break;
+                case MessageType::PUBLISH:
+                    this->handlePublish(bytes);
+                    break;
+                default:
+                    break;
+                }
+                this->impl_runTask();
+            }
+        }
+
+        void handleRegister(std::vector<uint8_t>& bytes) {
+            RegisterMessage msg(bytes);
+            NodeInfo info;
+            info.type = msg.nodeType;
+            info.id = msg.id;
+            info.ip = msg.ip;
+            info.port = msg.port;
+            info.heartbeat = msg.timestamp;
+            info.topics = msg.topics;
+            bool success = this->nodes.addNode(info);
+            if (success) this->impl_handleRegister(msg);
+        }
+
+        void handleUnregister(std::vector<uint8_t>& bytes) {
+            UnregisterMessage msg(bytes);
+            this->impl_handleUnregister(msg);
+        }
+
+        void handleHeartbeat(std::vector<uint8_t>& bytes) {
+            HeartbeatMessage msg(bytes);
+            NodeInfo* ptr;
+            bool nodeRegistered = this->nodes.getNodeByID(msg.id, ptr);
+            if (nodeRegistered) {
+                ptr->heartbeat = msg.timestamp;
+                this->impl_handleHeartbeat(msg);
+            }
+        }
+
+        void handlePublish(std::vector<uint8_t>& bytes) {
+            PublishMessage msg(bytes);
+            this->impl_handlePublish(msg);
+        }
+
+
+        virtual void impl_start(std::string brokerIp, uint32_t brokerPort) = 0;
+        virtual void impl_stop() = 0;
+        virtual void impl_admTask() = 0;
+        virtual void impl_runTask() = 0;
+        virtual void impl_handleRegister(RegisterMessage& msg) = 0;
+        virtual void impl_handleUnregister(UnregisterMessage& msg) = 0;
+        virtual void impl_handleHeartbeat(HeartbeatMessage& msg) = 0;
+        virtual void impl_handlePublish(PublishMessage& msg) = 0;
+
     };
 
 }  // namespace prc
