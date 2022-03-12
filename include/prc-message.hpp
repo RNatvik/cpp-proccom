@@ -10,25 +10,16 @@ namespace prc {
         REGISTER = 1,
         LINK = 2,
         HEARTBEAT = 3,
-        PUBLISH = 4
+        PUBLISH = 4,
+        UNREGISTER = 5
     };
-
-    /*
-    TODO: Default message type for subclasses
-    */
 
     struct Message {
         MessageType msgType;
         std::string id;
         uint64_t timestamp;
 
-        Message() {}
-
-        Message(MessageType type, std::string id) {
-            this->msgType = type;
-            this->id = id;
-            this->timestamp = 69;  // some chronos voodoo
-        }
+        Message(MessageType type) { this->msgType = type; }
 
         Message(std::vector<uint8_t> bytes) { this->fromBytes(bytes); }
 
@@ -108,16 +99,9 @@ namespace prc {
         std::vector<std::string> topics;
 
 
-        RegisterMessage() : Message() {}
+        RegisterMessage() : Message(MessageType::REGISTER) {}
 
-        RegisterMessage(std::vector<uint8_t> bytes) : Message() {
-            this->fromBytes(bytes);
-        }
-
-        RegisterMessage(std::string id, NodeType nodeType, std::string ip, uint32_t port)
-            : Message(MessageType::REGISTER, id) {
-            this->nodeType = nodeType;
-        }
+        RegisterMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
 
         ~RegisterMessage() {}
 
@@ -150,14 +134,9 @@ namespace prc {
         uint32_t port;
         std::string topic;
 
-        LinkMessage() {}
-        LinkMessage(std::string id, std::string ip, uint32_t port, std::string topic)
-            : Message(MessageType::LINK, id) {
-            this->ip = ip;
-            this->port = port;
-            this->topic = topic;
-        }
-        LinkMessage(std::vector<uint8_t> bytes) { this->fromBytes(bytes); }
+        LinkMessage() : Message(MessageType::LINK) {}
+
+        LinkMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
         ~LinkMessage() {}
 
     protected:
@@ -176,21 +155,22 @@ namespace prc {
     };
 
     struct PublishMessage : public Message {
+    public:
         std::string topic;
+    private:
+        std::vector<uint8_t> payload;
+    public:
+        PublishMessage() : Message(MessageType::PUBLISH) {}
 
-        PublishMessage() {}
-        PublishMessage(std::string id, std::string topic, Payload& pld)
-            : Message(MessageType::PUBLISH, id) {
-            this->topic = topic;
-            pld.toBytes(payload);
-        }
-        PublishMessage(std::vector<uint8_t> bytes) { this->fromBytes(bytes); }
+        PublishMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+
         ~PublishMessage() {}
 
         void attachPayload(Payload& pld) {
             payload.clear();
             pld.toBytes(payload);
         }
+
         void detachPayload(Payload& pld) { pld.fromBytes(payload); }
 
     protected:
@@ -200,6 +180,7 @@ namespace prc {
                 bytes.push_back(payload[i]);
             }
         }
+
         bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) {
             topic = _stringFromBytes(bytes, offset);
             for (int i = offset; i < bytes.size(); i++) {
@@ -207,15 +188,11 @@ namespace prc {
             }
             return true;
         }
-
-    private:
-        std::vector<uint8_t> payload;
     };
 
     struct HeartbeatMessage : public Message {
-        HeartbeatMessage() {}
-        HeartbeatMessage(std::string id) : Message(MessageType::HEARTBEAT, id) {}
-        HeartbeatMessage(std::vector<uint8_t> bytes) { this->fromBytes(bytes); }
+        HeartbeatMessage() : Message(MessageType::HEARTBEAT) {}
+        HeartbeatMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
         ~HeartbeatMessage() {}
     };
 
