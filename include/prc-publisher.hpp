@@ -11,6 +11,8 @@ namespace prc {
         uint64_t heartbeatTimeout;
         std::vector<std::string> topics;
 
+        NodeLookup nodes;
+
         bool running;
         soc::UdpSocket socket;
         soc::TSQueue<std::vector<uint8_t>> rxQueue;
@@ -37,6 +39,22 @@ namespace prc {
             return !this->running;
         }
 
+        void publish(std::string topic, Payload& pld) {
+            PublishMessage msg;
+            msg.id = this->id;
+            msg.topic = topic;
+            msg.timestamp = timestamp();
+            msg.attachPayload(pld);
+            std::vector<uint8_t> bytes = msg.toBytes();
+
+            for (auto subscriber : this->nodes.getSubscribersByTopic(topic)) {
+                this->socket.send(subscriber->ip, subscriber->port, bytes);
+            }
+
+        }
+
+        bool isRunning() { return this->running; }
+
         void start(std::string brokerIp, uint32_t brokerPort) {
             if (!this->running) {
                 this->running = true;
@@ -45,21 +63,22 @@ namespace prc {
                 this->runThread = std::thread([this]() {this->runTask();});
 
                 RegisterMessage msg;
+                msg.nodeType = NodeType::PUBLISHER;
                 msg.id = this->id;
                 msg.ip = this->socket.getIP();
                 msg.port = this->socket.getPort();
                 msg.topics = this->topics;
-                msg.timestamp = prc::timestamp();
+                msg.timestamp = timestamp();
                 this->socket.send(brokerIp, brokerPort, msg.toBytes());
             }
         }
 
         void stop() {
             if (this->running) {
+                socket.stop();
                 this->running = false;
                 if (this->admThread.joinable()) this->admThread.join();
                 if (this->runThread.joinable()) this->runThread.join();
-                socket.stop();
             }
         }
 
@@ -72,6 +91,22 @@ namespace prc {
         void admTask() {
             while (this->running) {
                 // do something
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(5000ms);
+                
+                auto currentTimestamp = timestamp();
+                NodeInfo* brokerInfo;
+                bool brokerRegistered = this->nodes.getBroker(brokerInfo);
+                bool brokerDisconnected = false;
+                if (brokerRegistered) brokerDisconnected = currentTimestamp > (brokerInfo->heartbeat + this->heartbeatTimeout);
+                if (brokerRegistered && !brokerDisconnected) {
+                    HeartbeatMessage msg;
+                    msg.id = this->id;
+                    msg.timestamp = currentTimestamp;
+                    this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
+                } else {
+                    //What now?
+                }
             }
         }
 
@@ -84,10 +119,35 @@ namespace prc {
 
                 switch (msg.msgType) {
                 case MessageType::HEARTBEAT:
+                    this->handleHeartbeat(bytes);
                     break;
                 case MessageType::REGISTER:
+                    this->handleRegister(bytes);
+                    break;
+                default:
                     break;
                 }
+            }
+        }
+
+        void handleRegister(std::vector<uint8_t>& bytes) {
+            RegisterMessage msg(bytes);
+            NodeInfo info;
+            info.type = msg.nodeType;
+            info.id = msg.id,
+            info.ip = msg.ip;
+            info.port = msg.port;
+            info.heartbeat = msg.timestamp;
+            info.topics = msg.topics;
+            this->nodes.addNode(info);
+        }
+
+        void handleHeartbeat(std::vector<uint8_t>& bytes) {
+            HeartbeatMessage msg(bytes);
+            NodeInfo* ptr;
+            bool success = this->nodes.getNodeByID(msg.id, ptr);
+            if (success) {
+                ptr->heartbeat = msg.timestamp;
             }
         }
 

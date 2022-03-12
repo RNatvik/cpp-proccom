@@ -40,6 +40,10 @@ set(ExeName2 test)
 set(ExeName2_libs ${LibName1} Socket)
 set(ExeName2_files src/test.cpp)
 
+set(ExeName3 hoy)
+set(ExeName3_libs ${LibName1} Socket)
+set(ExeName3_files src/hoy.cpp)
+
 #----------------------------------
 # INSTALL TARGETS
 #----------------------------------
@@ -72,6 +76,9 @@ target_link_libraries(${ExeName1} ${ExeName1_libs})
 add_executable(${ExeName2} ${ExeName2_files})
 target_link_libraries(${ExeName2} ${ExeName2_libs})
 #target_compile_options(${ExeName2} PRIVATE -Werror -Wextra -Os)
+
+add_executable(${ExeName3} ${ExeName3_files})
+target_link_libraries(${ExeName3} ${ExeName3_libs})
 
 #----------------------------------
 # INSTALL DECLARATION
