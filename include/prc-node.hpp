@@ -42,8 +42,10 @@ namespace prc {
 
             this->socket.attachErrorHandler(
                 [this](std::error_code ec, std::string ip, int port) {
-                    std::cout << "Socket ERROR (" << ip << ":" << port << ")" << std::endl;
-                    std::cout << ec.message() << std::endl;
+                    NodeInfo* ptr;
+                    if (this->nodes.getNodeByEndpoint(ip, port, ptr)) {
+                        this->nodes.removeNode(ptr->id);
+                    }
                     return true;
                 }
             );

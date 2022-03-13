@@ -126,22 +126,18 @@ namespace prc {
             return vect;
         }
 
-        std::vector<NodeInfo*> getPublishers() {
-            std::scoped_lock lock(mutex);
-            std::vector<NodeInfo*> vect;
-            for (auto p : this->nodes) {
-                if (p.second->type == NodeType::PUBLISHER) vect.push_back(p.second);
-            }
-            return vect;
-        }
-
         std::vector<NodeInfo*> getSubscribers() {
             std::scoped_lock lock(mutex);
-            std::vector<NodeInfo*> vect;
-            for (auto p : this->nodes) {
-                if (p.second->type == NodeType::SUBSCRIBER) vect.push_back(p.second);
-            }
-            return vect;
+            std::vector<NodeInfo*> subscribers;
+            this->priv_getSubscribers(subscribers);
+            return subscribers;
+        }
+
+        std::vector<NodeInfo*> getPublishers() {
+            std::scoped_lock lock(mutex);
+            std::vector<NodeInfo*> publishers;
+            this->priv_getPublishers(publishers);
+            return publishers;
         }
 
         bool getBroker(NodeInfo*& ptr) {
@@ -157,14 +153,16 @@ namespace prc {
 
         std::vector<NodeInfo*> getSubscribersByTopic(std::string topic) {
             std::scoped_lock lock(mutex);
-            std::vector<NodeInfo*> subscribers = this->getSubscribers();
-            return this->getFromTopic(topic, subscribers);
+            std::vector<NodeInfo*> subscribers;
+            this->priv_getSubscribers(subscribers);
+            return this->priv_getFromTopic(topic, subscribers);
         }
 
         std::vector<NodeInfo*> getPublishersByTopic(std::string topic) {
             std::scoped_lock lock(mutex);
-            std::vector<NodeInfo*> publishers = this->getPublishers();
-            return this->getFromTopic(topic, publishers);
+            std::vector<NodeInfo*> publishers;
+            this->priv_getPublishers(publishers);
+            return this->priv_getFromTopic(topic, publishers);
         }
 
         bool getNodeByID(std::string id, NodeInfo*& ptr) {
@@ -176,9 +174,19 @@ namespace prc {
             return false;
         }
 
-    private:
-        std::vector<NodeInfo*> getFromTopic(std::string topic, std::vector<NodeInfo*>& nodes) {
+        bool getNodeByEndpoint(std::string ip, uint32_t port, NodeInfo* &ptr) {
             std::scoped_lock lock(mutex);
+            for (auto pair : this->nodes) {
+                if (pair.second->ip == ip && pair.second->port == port) {
+                    ptr = pair.second;
+                    return true;
+                }    
+            }
+            return false;
+        }
+
+    private:
+        std::vector<NodeInfo*> priv_getFromTopic(std::string topic, std::vector<NodeInfo*>& nodes) {
             std::vector<NodeInfo*> vect;
             for (NodeInfo* node : nodes) {
                 for (std::string nodeTopic : node->topics) {
@@ -189,6 +197,18 @@ namespace prc {
                 }
             }
             return vect;
+        }
+
+        void priv_getPublishers(std::vector<NodeInfo*>& vect) {
+            for (auto p : this->nodes) {
+                if (p.second->type == NodeType::PUBLISHER) vect.push_back(p.second);
+            }
+        }
+
+        void priv_getSubscribers(std::vector<NodeInfo*>& vect) {
+            for (auto p : this->nodes) {
+                if (p.second->type == NodeType::SUBSCRIBER) vect.push_back(p.second);
+            }
         }
     };
 

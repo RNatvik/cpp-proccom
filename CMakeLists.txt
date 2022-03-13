@@ -30,6 +30,7 @@ set(LibName1_files
     include/prc-node.hpp
     include/prc-broker.hpp
     include/prc-publisher.hpp
+    include/prc-subscriber.hpp
 )
 
 set(ExeName1 main)

@@ -1,65 +1,64 @@
-#include <UdpSocket.hpp>
-#include <iostream>
-#include <prc-common.hpp>
-#include <prc-message.hpp>
+#include <prc-subscriber.hpp>
 
+#define CUSTOM_TOPIC "testTopic"
 
-class EchoServer {
-private:
-    soc::UdpSocket socket;
+struct CustomPayload : public prc::Payload {
+    std::string message;
 
-    void ihandle(std::vector<uint8_t>& buffer, std::size_t length, std::string ip, int port) {
-        std::cout << "\n\nReceived " << length << " bytes:\n";
-        for (int i = 0; i < length; i++) {
-            std::cout << buffer[i];
-        }
-        std::vector<uint8_t> tx(buffer.begin(), buffer.begin() + length);
-        socket.send(ip, port, tx);
-        
+    virtual void toBytes(std::vector<uint8_t>& bytes) {
+        _stringToBytes(this->message, bytes);
     }
-
-    void ihandleMessage(std::vector<uint8_t>& buffer, std::size_t length, std::string ip, int port) {
-        std::vector<uint8_t> vect(buffer.begin(), buffer.begin() + length);
-        prc::RegisterMessage msg(vect);
-        std::cout << "Received:" << std::endl;
-        std::cout << "Node id:\t" << msg.id << std::endl;
-        std::cout << "Node ip:\t" << msg.ip << std::endl;
-        std::cout << "Node port:\t" << msg.port << std::endl;
-        std::cout << "Node timestamp:\t" << msg.timestamp << std::endl;
-
-        prc::RegisterMessage retMsg;
-        retMsg.nodeType = prc::NodeType::BROKER;
-        retMsg.id = "EchoServer";
-        retMsg.ip = "127.0.0.1";
-        retMsg.port = 6969;
-        retMsg.timestamp = prc::timestamp();
-        socket.send(ip, port, retMsg.toBytes());
+    virtual bool fromBytes(std::vector<uint8_t>& bytes) {
+        int offset = 0;
+        this->message = _stringFromBytes(bytes, offset);
+        return true;
     }
-
-public:
-
-    EchoServer(std::string ip, int port) :
-        socket(
-            [this](std::vector<uint8_t>& buffer, std::size_t length, std::string ip, int port) {this->ihandleMessage(buffer, length, ip, port);},
-            ip,
-            port
-        )
-    {}
-    ~EchoServer() { stop(); }
-    void start() { socket.start(); }
-    void stop() { socket.stop(); }
-
 };
 
 
+void publishHandler(prc::PublishMessage& msg) {
+    if (msg.topic == CUSTOM_TOPIC) {
+        CustomPayload pld;
+        msg.detachPayload(pld);
+        std::cout << pld.message << std::endl << std::endl;
+    }
+    else {
+        std::cout << "wrong topic" << std::endl;
+    }
+}
 
 int main() {
-    EchoServer server("127.0.0.1", 6969);
-    server.start();
-    // 2 min delay before server shutdown
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(20000ms);
+    prc::Subscriber subscriber("testSub", "192.168.1.153", 6971);
+    subscriber.attachPublishHandler(publishHandler);
+    subscriber.addTopic(CUSTOM_TOPIC);
+    subscriber.start("192.168.1.153", 6969);
 
-    server.stop();
-    return 0;
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(60s);
+
+    // prc::NodeLookup nodes;
+    // prc::NodeInfo info;
+    // std::vector<std::string> topics;
+    // topics.push_back("topic1");
+    // topics.push_back("topic2");
+
+    // info.id = "test";
+    // info.ip = "127.0.0.1";
+    // info.port = 10;
+    // info.type = prc::NodeType::PUBLISHER;
+    // info.heartbeat = prc::timestamp();
+    // info.topics = topics;   
+
+    // nodes.addNode(info);
+
+    // prc::NodeInfo* ptr;
+    // nodes.getNodeByID("test", ptr);
+
+    // auto vect = nodes.getNodes();
+    // auto vect2 = nodes.getPublishers();
+    // auto vect3 = nodes.getSubscribers();
+    // auto vect5 = nodes.getPublishersByTopic("topic1");
+    // auto vect6 = nodes.getSubscribersByTopic("topic1");
+    
+
 }

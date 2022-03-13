@@ -67,11 +67,12 @@ namespace prc {
                 msg.id = subscriber->id;
                 msg.timestamp = timestamp();
                 std::vector<uint8_t> bytes = msg.toBytes();
-                for (std::string topic :subscriber->topics) {
+                for (std::string topic : subscriber->topics) {
                     for (NodeInfo* publisher : this->nodes.getPublishersByTopic(topic)) {
                         this->socket.send(publisher->ip, publisher->port, bytes);
                     }
                 }
+                this->nodes.removeNode(subscriber->id);
             }
 
             // Send heartbeat to remaining nodes
@@ -95,6 +96,30 @@ namespace prc {
             retMsg.port = this->socket.getPort();
             retMsg.timestamp = timestamp();
             this->socket.send(msg.ip, msg.port, retMsg.toBytes());
+
+            if (msg.nodeType == NodeType::SUBSCRIBER) {
+                auto msgBytes = msg.toBytes();
+                for (std::string topic : msg.topics) {
+                    for (NodeInfo* publisher : this->nodes.getPublishersByTopic(topic)) {
+                        this->socket.send(publisher->ip, publisher->port, msgBytes);
+                    }
+                }
+            }
+
+            RegisterMessage subMsg;
+            subMsg.nodeType = NodeType::SUBSCRIBER;
+            if (msg.nodeType == NodeType::PUBLISHER) {
+                for (std::string topic : msg.topics) {
+                    for (NodeInfo* subscriber : this->nodes.getSubscribersByTopic(topic)) {
+                        subMsg.id = subscriber->id;
+                        subMsg.ip = subscriber->ip;
+                        subMsg.port = subscriber->port;
+                        subMsg.timestamp = timestamp();
+                        subMsg.topics = subscriber->topics;
+                        this->socket.send(msg.ip, msg.port, subMsg.toBytes());
+                    }
+                }
+            }
         }
 
         void impl_handleUnregister(UnregisterMessage& msg) {

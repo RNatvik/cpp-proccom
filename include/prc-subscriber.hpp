@@ -1,23 +1,24 @@
-#ifndef PROCCOM_PUBLISHER_HPP
-#define PROCCOM_PUBLISHER_HPP
+#ifndef PROCCOM_SUBSCRIBER_HPP
+#define PROCCOM_SUBSCRIBER_HPP
 
 #include <prc-common.hpp>
 #include <prc-node.hpp>
 #include <iostream>
 
 namespace prc {
-    class Publisher : public Node {
+    class Subscriber : public Node {
     private:
         std::vector<std::string> topics;
-
+        std::function<void(PublishMessage &msg)> publishHandler;
 
     public:
-        Publisher(std::string id, std::string ip, uint32_t port, uint64_t heartbeatTimeout = 20000) :
+        Subscriber(std::string id, std::string ip, uint32_t port, uint64_t heartbeatTimeout = 20000) :
             Node(
-                NodeType::PUBLISHER,
+                NodeType::SUBSCRIBER,
                 id, ip, port, heartbeatTimeout
             )
         {
+            this->publishHandler = [this](PublishMessage &msg) {};
         }
 
         bool addTopic(std::string topic) {
@@ -25,26 +26,14 @@ namespace prc {
             return !this->running;
         }
 
-        void publish(std::string topic, Payload& pld) {
-            PublishMessage msg;
-            msg.id = this->id;
-            msg.topic = topic;
-            msg.timestamp = timestamp();
-            msg.attachPayload(pld);
-            std::vector<uint8_t> bytes = msg.toBytes();
-
-            for (auto subscriber : this->nodes.getSubscribersByTopic(topic)) {
-                std::string ip = subscriber->ip;
-                uint32_t port = subscriber->port;
-                this->socket.send(ip, port, bytes);
-            }
-
+        void attachPublishHandler(std::function<void(PublishMessage &msg)> publishHandler) {
+            this->publishHandler = publishHandler;
         }
 
     private:
         void impl_start(std::string brokerIp, uint32_t brokerPort) {
             RegisterMessage msg;
-            msg.nodeType = NodeType::PUBLISHER;
+            msg.nodeType = this->type;
             msg.id = this->id;
             msg.ip = this->socket.getIP();
             msg.port = this->socket.getPort();
@@ -95,7 +84,13 @@ namespace prc {
 
         void impl_handleHeartbeat(HeartbeatMessage& msg) {}
 
-        void impl_handlePublish(PublishMessage& msg) {}
+        void impl_handlePublish(PublishMessage& msg) {
+            std::cout << "Received msg: " << std::endl;
+            std::cout << "\tID:\t" << msg.id << std::endl;
+            std::cout << "\tTopic:\t" << msg.topic << std::endl;
+            std::cout << "\tTimestamp:\t" << msg.timestamp << std::endl;
+            this->publishHandler(msg);
+        }
 
     };
 }
