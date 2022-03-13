@@ -6,11 +6,11 @@ struct CustomPayload : public prc::Payload {
     std::string message;
 
     virtual void toBytes(std::vector<uint8_t>& bytes) {
-        _stringToBytes(this->message, bytes);
+        prc::stringToBytes(this->message, bytes);
     }
     virtual bool fromBytes(std::vector<uint8_t>& bytes) {
         int offset = 0;
-        this->message = _stringFromBytes(bytes, offset);
+        prc::stringFromBytes(this->message, bytes, offset);
         return true;
     }
 };
@@ -31,6 +31,7 @@ int main() {
     prc::Subscriber subscriber("testSub", "192.168.1.153", 6971);
     subscriber.attachPublishHandler(publishHandler);
     subscriber.addTopic(CUSTOM_TOPIC);
+    subscriber.addTopic("testTopic69");
     subscriber.start("192.168.1.153", 6969);
 
     using namespace std::chrono_literals;

@@ -25,6 +25,7 @@ SET(InstallLib ${ExportLib}/${PROJECT_NAME})
 set(LibName1 proccom)
 set(LibName1_files
     include/prc-common.hpp
+    include/prc-util.hpp
     include/prc-message.hpp
     include/prc-payload.hpp
     include/prc-node.hpp

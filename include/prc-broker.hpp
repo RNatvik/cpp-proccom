@@ -1,13 +1,12 @@
 #ifndef PROCCOM_BROKER_HPP
 #define PROCCOM_BROKER_HPP
+
 #include <prc-common.hpp>
 #include <prc-node.hpp>
-#include <iostream>
+#include <prc-message.hpp>
 
 namespace prc {
     class Broker : public Node {
-    private:
-
 
     public:
         Broker(std::string id, std::string ip, uint32_t port, uint64_t heartbeatTimeout = 20000) :
@@ -17,10 +16,6 @@ namespace prc {
             )
         {
         }
-
-
-
-
 
     private:
         void impl_start(std::string brokerIp, uint32_t brokerPort) {}

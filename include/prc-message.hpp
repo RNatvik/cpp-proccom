@@ -2,6 +2,7 @@
 #define PROCCOM_MESSAGE_HPP
 
 #include <prc-common.hpp>
+#include <prc-util.hpp>
 #include <prc-payload.hpp>
 
 namespace prc {
@@ -25,18 +26,18 @@ namespace prc {
 
         std::vector<uint8_t> toBytes() {
             std::vector<uint8_t> bytes;
-            _varToBytes(msgType, bytes);
-            _stringToBytes(id, bytes);
-            _varToBytes(timestamp, bytes);
+            prc::varToBytes(msgType, bytes);
+            prc::stringToBytes(id, bytes);
+            prc::varToBytes(timestamp, bytes);
             _toBytes(bytes);  // Subclass deconstruct
             return bytes;
         }
 
         bool fromBytes(std::vector<uint8_t>& bytes) {
             int offset = 0;
-            _varFromBytes(msgType, bytes, offset);
-            id = _stringFromBytes(bytes, offset);
-            _varFromBytes(timestamp, bytes, offset);
+            prc::varFromBytes(msgType, bytes, offset);
+            prc::stringFromBytes(id, bytes, offset);
+            prc::varFromBytes(timestamp, bytes, offset);
             bool success = _fromBytes(bytes, offset);  // Subclass reconstruct
             return success;
         }
@@ -45,48 +46,6 @@ namespace prc {
         virtual void _toBytes(std::vector<uint8_t>& bytes) {}
         virtual bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) {
             return true;
-        }
-
-        template <typename T>
-        void _varToBytes(const T& var, std::vector<uint8_t>& vect) {
-            uint8_t* ptr = (uint8_t*)&var;
-            for (int i = 0; i < sizeof(var); i++) {
-                vect.push_back(ptr[i]);
-            }
-        }
-
-        template <typename T>
-        void _varFromBytes(T& var, const std::vector<uint8_t>& vect, int& offset) {
-            uint8_t* ptr = (uint8_t*)&var;
-            for (int i = 0; i < sizeof(var); i++) {
-                ptr[i] = vect[i + offset];
-            }
-            offset += sizeof(var);
-        }
-
-        void _stringToBytes(const std::string& str, std::vector<uint8_t>& bytes) {
-            for (uint8_t character : str) {
-                bytes.push_back(character);
-            }
-            bytes.push_back('\0');
-        }
-
-        std::string _stringFromBytes(const std::vector<uint8_t>& bytes,
-            int& offset) {
-            std::string str = "";
-            int i = 0;
-            while ((i + offset) < bytes.size()) {
-                uint8_t character = bytes[i + offset];
-                i++;
-                if (character != '\0') {
-                    str += character;
-                }
-                else {
-                    break;
-                }
-            }
-            offset += i;
-            return str;
         }
     };
 
@@ -105,23 +64,25 @@ namespace prc {
 
     protected:
         void _toBytes(std::vector<uint8_t>& bytes) override {
-            _varToBytes(nodeType, bytes);
-            _stringToBytes(ip, bytes);
-            _varToBytes(port, bytes);
+            prc::varToBytes(nodeType, bytes);
+            prc::stringToBytes(ip, bytes);
+            prc::varToBytes(port, bytes);
             for (std::string topic : topics) {
-                _stringToBytes(topic, bytes);
+                prc::stringToBytes(topic, bytes);
             }
             bytes.push_back(topics.size());
         }
 
         bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) override {
-            _varFromBytes(nodeType, bytes, offset);
-            ip = _stringFromBytes(bytes, offset);
-            _varFromBytes(port, bytes, offset);
+            prc::varFromBytes(nodeType, bytes, offset);
+            prc::stringFromBytes(ip, bytes, offset);
+            prc::varFromBytes(port, bytes, offset);
             uint8_t numTopics = bytes.back();
             bytes.pop_back();
             for (int i = 0; i < numTopics; i++) {
-                topics.push_back(_stringFromBytes(bytes, offset));
+                std::string str;
+                prc::stringFromBytes(str, bytes, offset);
+                topics.push_back(str);
             }
             return true;
         }
@@ -148,14 +109,14 @@ namespace prc {
 
     protected:
         void _toBytes(std::vector<uint8_t>& bytes) {
-            _stringToBytes(topic, bytes);
+            prc::stringToBytes(topic, bytes);
             for (int i = 0; i < payload.size(); i++) {
                 bytes.push_back(payload[i]);
             }
         }
 
         bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) {
-            topic = _stringFromBytes(bytes, offset);
+            prc::stringFromBytes(topic, bytes, offset);
             for (int i = offset; i < bytes.size(); i++) {
                 payload.push_back(bytes[i]);
             }

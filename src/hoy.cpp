@@ -7,11 +7,11 @@ struct CustomPayload : public prc::Payload {
     std::string message;
 
     virtual void toBytes(std::vector<uint8_t>& bytes) {
-        _stringToBytes(this->message, bytes);
+        prc::stringToBytes(this->message, bytes);
     }
     virtual bool fromBytes(std::vector<uint8_t>& bytes) {
         int offset = 0;
-        this->message = _stringFromBytes(bytes, offset);
+        prc::stringFromBytes(this->message, bytes, offset);
         return true;
     }
 };
@@ -30,9 +30,10 @@ int main(int argc, char* argv[]) {
     }
     prc::Publisher publisher(id, "192.168.1.153", port);
     publisher.addTopic(CUSTOM_TOPIC);
+    publisher.addTopic("testTopic69");
     publisher.start("192.168.1.153", 6969);
 
-    
+
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(5s);
 
@@ -40,7 +41,7 @@ int main(int argc, char* argv[]) {
     pld.message = "Hello";
     for (int i = 0; i < 50; i++) {
         publisher.publish(CUSTOM_TOPIC, pld);
-    std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(1s);
     }
     std::this_thread::sleep_for(10s);
 

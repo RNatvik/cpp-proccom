@@ -3,7 +3,7 @@
 
 #include <prc-common.hpp>
 #include <prc-node.hpp>
-#include <iostream>
+#include <prc-message.hpp>
 
 namespace prc {
     class Publisher : public Node {
