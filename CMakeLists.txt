@@ -26,25 +26,31 @@ set(LibName1 proccom)
 set(LibName1_files
     include/prc-common.hpp
     include/prc-util.hpp
+    src/prc-util.cpp
     include/prc-message.hpp
+    src/prc-message.cpp
     include/prc-payload.hpp
     include/prc-node.hpp
+    src/prc-node.cpp
     include/prc-broker.hpp
+    src/prc-broker.cpp
     include/prc-publisher.hpp
+    src/prc-publisher.cpp
     include/prc-subscriber.hpp
+    src/prc-subscriber.cpp
 )
 
 set(ExeName1 main)
 set(ExeName1_libs ${LibName1} Socket)
-set(ExeName1_files src/main.cpp)
+set(ExeName1_files app/main.cpp)
 
 set(ExeName2 test)
 set(ExeName2_libs ${LibName1} Socket)
-set(ExeName2_files src/test.cpp)
+set(ExeName2_files app/test.cpp)
 
 set(ExeName3 hoy)
 set(ExeName3_libs ${LibName1} Socket)
-set(ExeName3_files src/hoy.cpp)
+set(ExeName3_files app/hoy.cpp)
 
 #----------------------------------
 # INSTALL TARGETS
@@ -60,10 +66,11 @@ SET(InstallFiles1 ${LibName1_files})
 add_library(${LibName1} ${LibName1_files})
 set_target_properties(${LibName1} PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(
-   ${LibName1} INTERFACE
+   ${LibName1} PUBLIC
    $<INSTALL_INTERFACE:include>
    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
+target_link_libraries(${LibName1} PUBLIC Socket)
 #target_compile_options(${LibName1} PRIVATE -Werror -Wall -Wextra)
 
 
@@ -73,34 +80,32 @@ target_include_directories(
 add_executable(${ExeName1} ${ExeName1_files})
 target_link_libraries(${ExeName1} ${ExeName1_libs})
 
-#target_compile_options(${ExeName1} PRIVATE -Werror -Wextra -Os)
-
 add_executable(${ExeName2} ${ExeName2_files})
 target_link_libraries(${ExeName2} ${ExeName2_libs})
-#target_compile_options(${ExeName2} PRIVATE -Werror -Wextra -Os)
 
 add_executable(${ExeName3} ${ExeName3_files})
 target_link_libraries(${ExeName3} ${ExeName3_libs})
+
 
 #----------------------------------
 # INSTALL DECLARATION
 #----------------------------------
 
-install(
-    FILES ${InstallFiles1}
-    DESTINATION ${InstallInclude}
-)
+# install(
+#     FILES ${InstallFiles1}
+#     DESTINATION ${InstallInclude}
+# )
 
-install(
-    TARGETS ${InstallTarget1}
-    EXPORT export_${PROJECT_NAME}
-    DESTINATION ${InstallLib}
-)
+# install(
+#     TARGETS ${InstallTarget1}
+#     EXPORT export_${PROJECT_NAME}
+#     DESTINATION ${InstallLib}
+# )
 
-install(
-    EXPORT export_${PROJECT_NAME}
-    FILE ${PROJECT_NAME}-config.cmake
-    DESTINATION ${InstallLib}
-)
+# install(
+#     EXPORT export_${PROJECT_NAME}
+#     FILE ${PROJECT_NAME}-config.cmake
+#     DESTINATION ${InstallLib}
+# )
 
 

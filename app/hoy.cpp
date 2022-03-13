@@ -1,4 +1,5 @@
 #include <prc-publisher.hpp>
+#include <prc-util.hpp>
 #include <iostream>
 
 #define CUSTOM_TOPIC "testTopic"
@@ -17,6 +18,11 @@ struct CustomPayload : public prc::Payload {
 };
 
 int main(int argc, char* argv[]) {
+    std::vector<uint8_t> bytes;
+    bool test = true;
+
+    prc::varToBytes(test, bytes);
+
     int port;
     std::string id;
     if (argc != 3) {
