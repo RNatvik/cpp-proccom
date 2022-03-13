@@ -86,6 +86,7 @@ namespace prc {
             this->rxQueue.push_back(std::vector<uint8_t>(bytes.begin(), bytes.begin() + length));
             this->newMessage.set();
         }
+
         void admTask() {
             while (this->running) {
                 using namespace std::chrono_literals;
@@ -95,6 +96,7 @@ namespace prc {
                 this->impl_admTask();
             }
         }
+        
         void runTask() {
             while (this->running) {
                 if (this->rxQueue.empty()) this->newMessage.wait();
