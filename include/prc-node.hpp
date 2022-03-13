@@ -2,8 +2,8 @@
 #define PROCCOM_NODE_HPP
 
 #include <prc-common.hpp>
+#include <prc-message.hpp>
 #include <UdpSocket.hpp>
-#include <map>
 
 
 namespace prc {
@@ -39,12 +39,20 @@ namespace prc {
             this->id = id;
             this->heartbeatTimeout = heartbeatTimeout;
             this->running = false;
+
+            this->socket.attachErrorHandler(
+                [this](std::error_code ec, std::string ip, int port) {
+                    std::cout << "Socket ERROR (" << ip << ":" << port << ")" << std::endl;
+                    std::cout << ec.message() << std::endl;
+                    return true;
+                }
+            );
         }
         ~Node() {}
 
         bool isRunning() { return this->running; }
 
-        void start(std::string brokerIp="", uint32_t brokerPort=-1) {
+        void start(std::string brokerIp="", uint32_t brokerPort=0) {
             if (!this->running) {
                 this->running = true;
                 this->socket.start();
@@ -55,12 +63,21 @@ namespace prc {
         }
 
         void stop() {
+            std::cout << "Stop called" << std::endl;
             if (this->running) {
                 this->impl_stop();
-                socket.stop();
+                using namespace std::chrono_literals;
                 this->running = false;
+                std::cout << "Waiting for admThread" << std::endl;
                 if (this->admThread.joinable()) this->admThread.join();
+                std::cout << "Waiting for runThread" << std::endl;
+                this->newMessage.set();
                 if (this->runThread.joinable()) this->runThread.join();
+                std::cout << "Sleeping 2 sec" << std::endl;
+                std::this_thread::sleep_for(2s);
+                std::cout << "Stopping socket" << std::endl;
+                socket.stop();
+                std::cout << "Stop call finished" << std::endl;
             }
         }
 
@@ -73,6 +90,8 @@ namespace prc {
             while (this->running) {
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(5000ms);
+                if (!this->running) break;
+
                 this->impl_admTask();
             }
         }
@@ -80,6 +99,7 @@ namespace prc {
             while (this->running) {
                 if (this->rxQueue.empty()) this->newMessage.wait();
                 this->newMessage.clear();
+                if (!this->running) break;
 
                 std::vector<uint8_t> bytes = this->rxQueue.pop_front();
                 Message msg(bytes);
@@ -119,6 +139,7 @@ namespace prc {
 
         void handleUnregister(std::vector<uint8_t>& bytes) {
             UnregisterMessage msg(bytes);
+            std::cout << "Unregister received from " << msg.id << std::endl;
             this->impl_handleUnregister(msg);
         }
 

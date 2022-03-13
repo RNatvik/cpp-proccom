@@ -10,6 +10,7 @@
 #include <chrono>
 #include <functional>
 #include <condition_variable>
+#include <iostream>
 
 
 
@@ -90,6 +91,8 @@ namespace prc {
 
         bool addNode(const NodeInfo& node) {
             std::scoped_lock lock(mutex);
+            std::cout << "Lookup:\tAttempting to add " << node.id << std::endl;
+            std::cout << "Lookup:\tKeycount: " << this->nodes.count(node.id) << std::endl;
             if (nodes.count(node.id) == 0) {
                 NodeInfo* newNode = new NodeInfo(node);
                 this->nodes[newNode->id] = newNode;
@@ -101,10 +104,13 @@ namespace prc {
 
         bool removeNode(std::string id) {
             std::scoped_lock lock(mutex);
+            std::cout << "Lookup:\tAttempting to remove " << id << std::endl;
+            std::cout << "Lookup:\tKeycount: " << this->nodes.count(id) << std::endl;
             if (this->nodes.count(id) > 0) {
+                std::cout << "Lookup:\tRemoving " << id << std::endl;
                 NodeInfo* ptr = nodes[id];
                 nodes.erase(id);
-
+                std::cout << "Lookup:\tKeycount: " << this->nodes.count(id) << std::endl;
                 delete ptr;
                 return true;
             }

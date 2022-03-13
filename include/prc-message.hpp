@@ -18,10 +18,9 @@ namespace prc {
         std::string id;
         uint64_t timestamp;
 
+        Message() {}
         Message(MessageType type) { this->msgType = type; }
-
-        Message(std::vector<uint8_t> bytes) { this->fromBytes(bytes); }
-
+        Message(std::vector<uint8_t>& bytes) { this->fromBytes(bytes); }
         ~Message() {}
 
         std::vector<uint8_t> toBytes() {
@@ -33,7 +32,7 @@ namespace prc {
             return bytes;
         }
 
-        bool fromBytes(std::vector<uint8_t> bytes) {
+        bool fromBytes(std::vector<uint8_t>& bytes) {
             int offset = 0;
             _varFromBytes(msgType, bytes, offset);
             id = _stringFromBytes(bytes, offset);
@@ -100,12 +99,12 @@ namespace prc {
 
         RegisterMessage() : Message(MessageType::REGISTER) {}
 
-        RegisterMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+        RegisterMessage(std::vector<uint8_t>& bytes) : Message() { this->fromBytes(bytes); }
 
         ~RegisterMessage() {}
 
     protected:
-        void _toBytes(std::vector<uint8_t>& bytes) {
+        void _toBytes(std::vector<uint8_t>& bytes) override {
             _varToBytes(nodeType, bytes);
             _stringToBytes(ip, bytes);
             _varToBytes(port, bytes);
@@ -115,7 +114,7 @@ namespace prc {
             bytes.push_back(topics.size());
         }
 
-        bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) {
+        bool _fromBytes(std::vector<uint8_t>& bytes, int& offset) override {
             _varFromBytes(nodeType, bytes, offset);
             ip = _stringFromBytes(bytes, offset);
             _varFromBytes(port, bytes, offset);
@@ -136,7 +135,7 @@ namespace prc {
     public:
         PublishMessage() : Message(MessageType::PUBLISH) {}
 
-        PublishMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+        PublishMessage(std::vector<uint8_t>& bytes) : Message() { this->fromBytes(bytes); }
 
         ~PublishMessage() {}
 
@@ -166,13 +165,13 @@ namespace prc {
 
     struct HeartbeatMessage : public Message {
         HeartbeatMessage() : Message(MessageType::HEARTBEAT) {}
-        HeartbeatMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+        HeartbeatMessage(std::vector<uint8_t> bytes) : Message() { this->fromBytes(bytes); }
         ~HeartbeatMessage() {}
     };
 
     struct UnregisterMessage : public Message {
         UnregisterMessage() : Message(MessageType::HEARTBEAT) {}
-        UnregisterMessage(std::vector<uint8_t> bytes) : Message(bytes) {}
+        UnregisterMessage(std::vector<uint8_t>& bytes) : Message() { this->fromBytes(bytes); }
         ~UnregisterMessage() {}
     };
 

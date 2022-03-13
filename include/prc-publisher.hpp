@@ -3,9 +3,10 @@
 
 #include <prc-common.hpp>
 #include <prc-node.hpp>
+#include <iostream>
 
 namespace prc {
-    class Publisher : Node {
+    class Publisher : public Node {
     private:
         std::vector<std::string> topics;
 
@@ -51,12 +52,15 @@ namespace prc {
         }
 
         void impl_stop() {
+            std::cout << "impl_stop()" << std::endl;
             UnregisterMessage msg;
             msg.id = this->id;
             msg.timestamp = timestamp();
             NodeInfo* brokerInfo;
             bool brokerExists = this->nodes.getBroker(brokerInfo);
+            std::cout << "Broker exists: " << brokerExists << "... sending unregister if true" << std::endl;
             if (brokerExists) this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
+            std::cout << "end impl_stop()" << std::endl;
         }
 
         void impl_admTask() {
@@ -76,9 +80,12 @@ namespace prc {
             }
         }
 
-        void impl_runTask() {}
+        void impl_runTask() {
+        }
 
-        void impl_handleRegister(RegisterMessage& msg) {}
+        void impl_handleRegister(RegisterMessage& msg) {
+
+        }
 
         void impl_handleUnregister(UnregisterMessage& msg) {
             this->nodes.removeNode(msg.id);
