@@ -20,46 +20,38 @@ void publishHandler(prc::PublishMessage& msg) {
     if (msg.topic == CUSTOM_TOPIC) {
         CustomPayload pld;
         msg.detachPayload(pld);
-        std::cout << pld.message << std::endl << std::endl;
+        auto currentTime = prc::timestamp();
+        std::cout << pld.message << " (" << msg.timestamp << ")" << std::endl << std::endl;
+        std::cout << "Diff: " << currentTime - msg.timestamp << std::endl;
     }
     else {
         std::cout << "wrong topic" << std::endl;
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    int port;
+    if (argc != 2) {
+        std::cout << "usage: " << argv[0] << " <port>\n";
+        return 2;
+    }
+    else {
+        std::string sPort(argv[1]);
+        port = std::stoi(sPort);
+    }
+    
     prc::Subscriber subscriber("testSub", "192.168.1.153", 6971);
     subscriber.attachPublishHandler(publishHandler);
     subscriber.addTopic(CUSTOM_TOPIC);
     subscriber.addTopic("testTopic69");
     subscriber.start("192.168.1.153", 6969);
 
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(60s);
+    std::string str;
+    std::cout << "Press ENTER to quit: ";
+    while (std::getline(std::cin, str)) {
+        if (str.empty()) break;
+    }
 
-    // prc::NodeLookup nodes;
-    // prc::NodeInfo info;
-    // std::vector<std::string> topics;
-    // topics.push_back("topic1");
-    // topics.push_back("topic2");
-
-    // info.id = "test";
-    // info.ip = "127.0.0.1";
-    // info.port = 10;
-    // info.type = prc::NodeType::PUBLISHER;
-    // info.heartbeat = prc::timestamp();
-    // info.topics = topics;   
-
-    // nodes.addNode(info);
-
-    // prc::NodeInfo* ptr;
-    // nodes.getNodeByID("test", ptr);
-
-    // auto vect = nodes.getNodes();
-    // auto vect2 = nodes.getPublishers();
-    // auto vect3 = nodes.getSubscribers();
-    // auto vect5 = nodes.getPublishersByTopic("topic1");
-    // auto vect6 = nodes.getSubscribersByTopic("topic1");
-    
+    subscriber.stop();
 
 }

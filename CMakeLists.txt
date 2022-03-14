@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.17)
 project(socket-service VERSION 1.0.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_FLAGS "-O2")
+# set(CMAKE_C_FLAGS "-O2")
 
 add_subdirectory(lib/cpp-socket)
 
@@ -40,17 +42,17 @@ set(LibName1_files
     src/prc-subscriber.cpp
 )
 
-set(ExeName1 main)
+set(ExeName1 broker)
 set(ExeName1_libs ${LibName1} Socket)
-set(ExeName1_files app/main.cpp)
+set(ExeName1_files app/broker.cpp)
 
-set(ExeName2 test)
+set(ExeName2 subscriber)
 set(ExeName2_libs ${LibName1} Socket)
-set(ExeName2_files app/test.cpp)
+set(ExeName2_files app/subscriber.cpp)
 
-set(ExeName3 hoy)
+set(ExeName3 publisher)
 set(ExeName3_libs ${LibName1} Socket)
-set(ExeName3_files app/hoy.cpp)
+set(ExeName3_files app/publisher.cpp)
 
 #----------------------------------
 # INSTALL TARGETS

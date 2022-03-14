@@ -18,11 +18,6 @@ struct CustomPayload : public prc::Payload {
 };
 
 int main(int argc, char* argv[]) {
-    std::vector<uint8_t> bytes;
-    bool test = true;
-
-    prc::varToBytes(test, bytes);
-
     int port;
     std::string id;
     if (argc != 3) {
@@ -44,12 +39,12 @@ int main(int argc, char* argv[]) {
     std::this_thread::sleep_for(5s);
 
     CustomPayload pld;
-    pld.message = "Hello";
-    for (int i = 0; i < 50; i++) {
+    pld.message = "Helloa";
+    auto startTime = prc::timestamp();
+    while (prc::timestamp() < startTime + 1) {
         publisher.publish(CUSTOM_TOPIC, pld);
-        std::this_thread::sleep_for(1s);
     }
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(1s);
 
     publisher.stop();
     return 0;

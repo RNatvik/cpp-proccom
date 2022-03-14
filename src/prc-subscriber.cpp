@@ -74,10 +74,6 @@ namespace prc {
         void Subscriber::impl_handleHeartbeat(HeartbeatMessage& msg) {}
 
         void Subscriber::impl_handlePublish(PublishMessage& msg) {
-            std::cout << "Received msg: " << std::endl;
-            std::cout << "\tID:\t" << msg.id << std::endl;
-            std::cout << "\tTopic:\t" << msg.topic << std::endl;
-            std::cout << "\tTimestamp:\t" << msg.timestamp << std::endl;
             this->publishHandler(msg);
         }
 
