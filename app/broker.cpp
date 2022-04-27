@@ -3,12 +3,12 @@
 
 int main(int argc, char* argv[]) {
     int port;
-    if (argc != 2) {
-        std::cout << "usage: " << argv[0] << " <port>\n";
+    if (argc != 3) {
+        std::cout << "usage: " << argv[0] << "<ip> <port>\n";
         return 2;
     }
     else {
-        std::string sPort(argv[1]);
+        std::string sPort(argv[2]);
         port = std::stoi(sPort);
     }
     prc::Broker broker("Broker", "127.0.0.1", port, 15000);
