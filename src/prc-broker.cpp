@@ -50,15 +50,7 @@ namespace prc {
         // Notify remaining publishers of dead subscribers and remove them
         publishers = this->nodes.getPublishers();
         for (NodeInfo* subscriber : deadSubscribers) {
-            UnregisterMessage msg;
-            msg.id = subscriber->id;
-            msg.timestamp = timestamp();
-            std::vector<uint8_t> bytes = msg.toBytes();
-            for (std::string topic : subscriber->topics) {
-                for (NodeInfo* publisher : this->nodes.getPublishersByTopic(topic)) {
-                    this->socket.send(publisher->ip, publisher->port, bytes);
-                }
-            }
+            this->_notify_dead_subscriber(subscriber);
             this->nodes.removeNode(subscriber->id);
         }
 
@@ -71,11 +63,10 @@ namespace prc {
         }
     }
 
-    void Broker::impl_runTask() {
-    }
+    void Broker::impl_runTask() {}
 
     void Broker::impl_handleRegister(RegisterMessage& msg) {
-
+        // Send broker information in return to the registered node
         RegisterMessage retMsg;
         retMsg.nodeType = NodeType::BROKER;
         retMsg.id = this->id;
@@ -84,6 +75,7 @@ namespace prc {
         retMsg.timestamp = timestamp();
         this->socket.send(msg.ip, msg.port, retMsg.toBytes());
 
+        // If the newly registered node is a subscriber, send its information to relevant publishers
         if (msg.nodeType == NodeType::SUBSCRIBER) {
             auto msgBytes = msg.toBytes();
             for (std::string topic : msg.topics) {
@@ -94,6 +86,7 @@ namespace prc {
             }
         }
 
+        // If the newly registered node is a publisher, return information about relevant subscribers
         RegisterMessage subMsg;
         subMsg.nodeType = NodeType::SUBSCRIBER;
         if (msg.nodeType == NodeType::PUBLISHER) {
@@ -112,12 +105,27 @@ namespace prc {
     }
 
     void Broker::impl_handleUnregister(UnregisterMessage& msg) {
-        this->nodes.removeNode(msg.id);
+        NodeInfo *node;
+        this->nodes.getNodeByID(msg.id, node);
+        if (node->type == NodeType::SUBSCRIBER) {this->_notify_dead_subscriber(node);}
     }
 
     void Broker::impl_handleHeartbeat(HeartbeatMessage& msg) {
     }
 
     void Broker::impl_handlePublish(PublishMessage& msg) {}
+
+
+    void Broker::_notify_dead_subscriber(NodeInfo *info) {
+        UnregisterMessage msg;
+        msg.id = info->id;
+        msg.timestamp = timestamp();
+        std::vector<uint8_t> bytes = msg.toBytes();
+        for (std::string topic : info->topics) {
+            for (NodeInfo* publisher : this->nodes.getPublishersByTopic(topic)) {
+                this->socket.send(publisher->ip, publisher->port, bytes);
+            }
+        }
+    }
 
 }

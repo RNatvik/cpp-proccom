@@ -23,6 +23,8 @@ namespace prc {
         void impl_handleHeartbeat(HeartbeatMessage& msg);
         void impl_handlePublish(PublishMessage& msg);
 
+        void _notify_dead_subscriber(NodeInfo *info);
+
     };
 }
 

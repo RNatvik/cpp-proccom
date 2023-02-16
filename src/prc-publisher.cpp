@@ -43,15 +43,12 @@ namespace prc {
     }
 
     void Publisher::impl_stop() {
-        std::cout << "impl_stop()" << std::endl;
         UnregisterMessage msg;
         msg.id = this->id;
         msg.timestamp = timestamp();
         NodeInfo* brokerInfo;
         bool brokerExists = this->nodes.getBroker(brokerInfo);
-        std::cout << "Broker exists: " << brokerExists << "... sending unregister if true" << std::endl;
         if (brokerExists) this->socket.send(brokerInfo->ip, brokerInfo->port, msg.toBytes());
-        std::cout << "end impl_stop()" << std::endl;
     }
 
     void Publisher::impl_admTask() {
@@ -71,16 +68,11 @@ namespace prc {
         }
     }
 
-    void Publisher::impl_runTask() {
-    }
+    void Publisher::impl_runTask() {}
 
-    void Publisher::impl_handleRegister(RegisterMessage& msg) {
+    void Publisher::impl_handleRegister(RegisterMessage& msg) {}
 
-    }
-
-    void Publisher::impl_handleUnregister(UnregisterMessage& msg) {
-        this->nodes.removeNode(msg.id);
-    }
+    void Publisher::impl_handleUnregister(UnregisterMessage& msg) {}
 
     void Publisher::impl_handleHeartbeat(HeartbeatMessage& msg) {}
 

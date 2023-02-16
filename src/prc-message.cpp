@@ -97,7 +97,7 @@ prc::HeartbeatMessage::HeartbeatMessage(std::vector<uint8_t>& bytes) : Message()
 prc::HeartbeatMessage::~HeartbeatMessage() {}
 
 
-prc::UnregisterMessage::UnregisterMessage() : Message(MessageType::HEARTBEAT) {}
+prc::UnregisterMessage::UnregisterMessage() : Message(MessageType::UNREGISTER) {}
 prc::UnregisterMessage::UnregisterMessage(std::vector<uint8_t>& bytes) : Message() { this->fromBytes(bytes); }
 prc::UnregisterMessage::~UnregisterMessage() {}
 

@@ -42,15 +42,21 @@ namespace prc {
         std::cout << "Stop called" << std::endl;
         if (this->running) {
             this->impl_stop();
+
             using namespace std::chrono_literals;
+
             this->running = false;
+
             std::cout << "Waiting for admThread" << std::endl;
             if (this->admThread.joinable()) this->admThread.join();
+
             std::cout << "Waiting for runThread" << std::endl;
             this->newMessage.set();
             if (this->runThread.joinable()) this->runThread.join();
+
             std::cout << "Sleeping 2 sec" << std::endl;
             std::this_thread::sleep_for(2s);
+            
             std::cout << "Stopping socket" << std::endl;
             socket.stop();
             std::cout << "Stop call finished" << std::endl;
@@ -117,7 +123,12 @@ namespace prc {
     void Node::handleUnregister(std::vector<uint8_t>& bytes) {
         UnregisterMessage msg(bytes);
         std::cout << "Unregister received from " << msg.id << std::endl;
-        this->impl_handleUnregister(msg);
+        NodeInfo *node;
+        if (this->nodes.getNodeByID(msg.id, node)) {
+            this->impl_handleUnregister(msg);
+            this->nodes.removeNode(msg.id);
+            std::cout << "Sucessfully unregistered." << std::endl;
+        }
     }
 
     void Node::handleHeartbeat(std::vector<uint8_t>& bytes) {
