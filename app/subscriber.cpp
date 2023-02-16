@@ -31,20 +31,22 @@ void publishHandler(prc::PublishMessage& msg) {
 
 int main(int argc, char* argv[]) {
     int port;
-    if (argc != 2) {
-        std::cout << "usage: " << argv[0] << " <port>\n";
+    std::string id;
+    if (argc != 3) {
+        std::cout << "usage: " << argv[0] << " <id> <port>\n";
         return 2;
     }
     else {
-        std::string sPort(argv[1]);
+        id = argv[1];
+        std::string sPort(argv[2]);
         port = std::stoi(sPort);
     }
     
-    prc::Subscriber subscriber("testSub", "192.168.1.153", 6971);
+    prc::Subscriber subscriber(id, "127.0.0.1", port);
     subscriber.attachPublishHandler(publishHandler);
     subscriber.addTopic(CUSTOM_TOPIC);
     subscriber.addTopic("testTopic69");
-    subscriber.start("192.168.1.153", 6969);
+    subscriber.start("127.0.0.1", 6969);
 
     std::string str;
     std::cout << "Press ENTER to quit: ";

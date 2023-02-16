@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     int port;
     std::string id;
     if (argc != 3) {
-        std::cout << "usage: " << argv[0] << "<id> <port>\n";
+        std::cout << "usage: " << argv[0] << " <id> <port>\n";
         return 2;
     }
     else {
@@ -29,10 +29,10 @@ int main(int argc, char* argv[]) {
         std::string sPort(argv[2]);
         port = std::stoi(sPort);
     }
-    prc::Publisher publisher(id, "192.168.1.153", port);
+    prc::Publisher publisher(id, "127.0.0.1", port);
     publisher.addTopic(CUSTOM_TOPIC);
     publisher.addTopic("testTopic69");
-    publisher.start("192.168.1.153", 6969);
+    publisher.start("127.0.0.1", 6969);
 
 
     using namespace std::chrono_literals;
@@ -41,7 +41,8 @@ int main(int argc, char* argv[]) {
     CustomPayload pld;
     pld.message = "Helloa";
     auto startTime = prc::timestamp();
-    while (prc::timestamp() < startTime + 1) {
+    while (prc::timestamp() < startTime + 60000) {
+        std::this_thread::sleep_for(1s);
         publisher.publish(CUSTOM_TOPIC, pld);
     }
     std::this_thread::sleep_for(1s);
